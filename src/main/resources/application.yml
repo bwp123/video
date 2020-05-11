@@ -1,0 +1,11 @@
+server:
+  port: 8080
+
+socket:
+  charge-server:
+    port: 9898
+
+mogu:
+  picture:
+    upload: E:\img    #定义文件上传的路径,真实地址
+    mapping: /cartoon #文件的虚拟目录

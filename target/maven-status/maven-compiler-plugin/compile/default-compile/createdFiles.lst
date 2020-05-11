@@ -1,0 +1,6 @@
+com\video\controller\HelloWorldController.class
+com\video\Application.class
+com\video\controller\UserController.class
+com\video\service\UserServiceImpl.class
+com\video\model\UserInfo.class
+com\video\service\UserService.class

@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en" xmlns:th="http://www.thymeleaf.org" style="overflow:hidden;">
+<script th:src="@{/js/jquery.min.js}" type="text/javascript"></script>
+<head>
+    <meta charset="UTF-8"/>
+    <title>Title</title>
+    <style type="text/css">
+        td {
+            border: solid 0px red;
+        }
+
+        div {
+            border: solid 0px green;
+        }
+
+        table {
+            border: solid 0px white;
+        }
+
+        html, body {
+            height: 100%;
+            border: solid 0px red;
+            width: 100%;
+        }
+        @font-face {
+            font-family:'方正蓝黑体'; /字体名称/
+            src:url('/font/方正兰亭黑简.TTF'); /字体源文件/
+        }
+
+    </style>
+</head>
+<body th:background="@{/img/center.png}" style="overflow-y:hidden">
+
+<table style="width:100%">
+    <tr>
+        <td style="width:25%"><img th:src="@{/img/left.png}"/></td>
+        <td style="width:50%"><span style="text-align:center;color:white;font-size:30px;font-family:方正蓝黑体;display:block;width:100%;">
+                欢迎光临临江换电站，请按指示进行操作!
+            </span></td>
+        <td style="width:25%">
+            <img style="float:right" th:src="@{/img/right.png}"/>
+        </td>
+    </tr>
+</table>
+<div style="height:80px"></div>
+
+<table style="margin:0 auto">
+    <tr>
+        <td th:background="@{/img/advice.png}" style="width:500px;height:300px;border:solid 0px red;background-repeat:no-repeat">
+            <video muted="muted" id="advice" th:src="@{/cartoon/advice.mp4}" controls="controls"
+                   autoplay="autoplay"
+                   style="width:390px;height:250px;position:relative;left:55px;border:solid 0px white"
+                   loop="loop">
+            </video>
+            <span style="text-align:center;color:white;font-size:30px;font-family:方正蓝黑体;margin:0 auto;padding:0px;display:block;width:100%;position: relative;top:38px;border:solid 0px green">
+                如需协助，请拨打电话:<br/>
+                0571-88888888
+            </span>
+        </td>
+        <td style="width:80px"></td>
+        <td th:background="@{/img/operate.png}" style="width:580px;height:420px;border:solid 0px red">
+            <span id="fontSpan"
+                  style="position:relative;left:110px;top:30px;color:#FFA042;font-size:25px;font-family:方正蓝黑体;">请您将车辆行驶至指定位置</span>
+            <video muted="muted" id="operateCarton" th:src="@{/cartoon/carfree.mp4}"
+                   controls="controls" autoplay="autoplay"
+                   style="width: 480px;height: 320px;position: relative;top: 10px;left: 65px;"
+                   loop="loop">
+            </video>
+
+            <div style="width: 480px;height: 320px;position: relative;top: 10px;left:65px;display:none" id="ticketDiv">
+            <table style="position: relative;top:30px;">
+                <tr>
+                    <td style="height:25px;"><img id="tick1" th:src="@{/img/tick.png}"/></td>
+                    <td style="color:white;font-size:25px">车辆档位N档</td>
+                </tr>
+                <tr>
+                    <td style="height:25px;"><img id="tick2" th:src="@{/img/tick.png}"/></td>
+                    <td style="color:white;font-size:25px">松开制动踏板</td>
+                </tr>
+                <tr>
+                    <td style="height:25px;"><img id="tick3" th:src="@{/img/tick.png}"/></td>
+                    <td style="color:white;font-size:25px">电子子驻车开关释放</td>
+                </tr>
+                <tr>
+                    <td style="height:25px;"><img id="tick4" th:src="@{/img/tick.png}"/></td>
+                    <td style="color:white;font-size:25px">方向盘摆正</td>
+                </tr>
+            </table>
+            </div>
+            <div style="width: 480px;height: 320px;position: relative;top: 10px;left:65px;display:none" id="qrCodeDiv">
+            <img id="qrCodeImg" style="position: relative;top:50px;left:200px;"/>
+            </div>
+
+            <div style="width: 480px;height: 320px;position: relative;top: 10px;left:65px;display:none;" id="completeDiv">
+                   <span style="color:white;font-size:35px;position:relative;top:120px;">换电完成，祝您一路顺风</span>
+            </div>
+        </td>
+    </tr>
+</table>
+<div style="position: absolute;bottom:0px;width:100%;">
+    <img style="width:100%" th:src="@{/img/buttom.png}"/>
+</div>
+
+<div style="position: absolute;top: 50%;left: 50%;transform: translate(-50%, -50%);display:none" id="emergeDiv">
+    <img  style="width: 480px;height: 320px;" th:src="@{/img/emerge.png}"/>
+</div>
+
+</body>
+</html>
+
+<script type="application/javascript">
+
+    /* websocket接收的后台SWOPSTATUS属性值：
+    0：无车；
+    1：车到位；
+    2：二维码扫码；
+    3：开始换电；
+    4：拆卸电池；
+    5：换电部分搬运电池；
+    6：安装新电池；
+    7：换电完成，平台恢复原位；
+    8：换电完成，车可以驶离；
+    9：故障；-- 为自定义
+*/
+
+    jQuery(document).ready(function () {
+
+        var socket, commandType;
+        var ip = '127.0.0.1';
+        var port = '8080';
+
+        function openSocket() {
+            console.log(typeof (WebSocket));
+            if (typeof (WebSocket) == "undefined") {
+                console.log("您的浏览器不支持WebSocket");
+                return;
+            }
+            var socketUrl = "ws://"+ip+":"+port+"/imserver/1";
+            if (socket != null) {
+                socket.close();
+                socket = null;
+            }
+            socket = new WebSocket(socketUrl);
+            //打开事件
+            socket.onopen = function () {
+                // socket.send("这是来自客户端的消息" + location.href + new Date());
+            };
+            //获得消息事件
+            socket.onmessage = function (msg) {
+                var data = eval("(" + msg.data + ")");
+                commandType = data.swopStatus;
+
+                $('#advice').trigger('play');
+                $('#operateCarton').trigger('play');
+
+                if (commandType == '0') { //0:无车；
+                    $('#operateCarton').prop('src', '/cartoon/carfree.mp4');
+                    $('#fontSpan').html("请您将车辆行驶至指定位置");
+                } else if (commandType == '1') { //1:车到位；
+                    $('#fontSpan').html("您的车辆已在指定位置，请按步骤操作");
+                    socket.send("请检查车辆");
+                } else if (commandType == '2') { //2:二维码扫码；
+                    $('#fontSpan').html("请扫二维码");
+                    $('#qrCodeImg').prop('src', '/video/getQRcode?content=' + data.strqrCode);
+                    socket.send("请用手机扫码屏幕上二维码");
+                } else if (commandType == '3') { // 3:开始换电；
+                    $('#operateCarton').prop('src', '/cartoon/change.mp4');
+                    $('#fontSpan').html("开始换电");
+                    socket.send("开始更换电池，请稍后");
+                } else if (commandType == '4') {// 4：拆卸电池；
+                    $('#operateCarton').prop('src', '/cartoon/change.mp4');
+                    $('#fontSpan').html("拆卸电池");
+                    socket.send("开始拆卸电池，请稍后");
+                } else if (commandType == '5') {// 5：换电部分搬运电池；
+                    $('#operateCarton').prop('src', '/cartoon/move.mp4');
+                    $('#fontSpan').html("搬运电池");
+                    socket.send("正在搬运电池，请稍后");
+                } else if (commandType == '6') { //6：安装新电池；
+                    $('#operateCarton').prop('src', '/cartoon/setup.mp4');
+                    $('#fontSpan').html("安装电池");
+                    socket.send("正在安装电池，请稍后");
+                } else if (commandType == '7') { // 7：换电完成，平台恢复原位；
+                    $('#operateCarton').prop('src', '/cartoon/recover.mp4');
+                    $('#fontSpan').html("换电完成，平台恢复原位");
+                    socket.send("电池安装完成，请稍后");
+                } else if (commandType == '8') {// 8：换电完成，车可以驶离；
+                    $('#fontSpan').html("换电完成，请安全驶离");
+                    socket.send("系统已确认，感谢您的耐心等待，祝您一路顺风");
+                    setTimeout(function () {
+                        $('#operateCarton').prop('src', '/cartoon/carfree.mp4');
+                        $('#fontSpan').html("请您将车辆行驶至指定位置");
+                        $("#operateCarton").show();
+                        $('#completeDiv').hide();
+                        $('#operateCarton').attr("loop", 'loop');
+                    }, 3000);
+                }else if(commandType == '9'){//9：紧急故障
+
+                }
+
+                if (commandType == '1') {//车到位
+                    $('#ticketDiv').show();
+                    $('#operateCarton').hide();
+                    $('#qrCodeDiv').hide();
+                    $('#completeDiv').hide();
+                    $('#emergeDiv').hide();
+
+                    $('#tick1').hide();
+                    $('#tick2').hide();
+                    $('#tick3').hide();
+
+                    setTimeout(function () {
+                        $('#tick1').show();
+                    }, 1000);
+                    setTimeout(function () {
+                        $('#tick2').show();
+                    }, 1500);
+                    setTimeout(function () {
+                        $('#tick3').show();
+                    }, 2000);
+                } else if(commandType == '2'){//二维码
+                     $('#ticketDiv').hide();
+                     $('#operateCarton').hide();
+                     $('#qrCodeDiv').show();
+                     $('#emergeDiv').hide();
+                     $('#completeDiv').hide();
+                }else if(commandType == '8'){//换电完成
+                    $('#ticketDiv').hide();
+                    $('#operateCarton').hide();
+                    $('#qrCodeDiv').hide();
+                    $('#emergeDiv').hide();
+                    $('#completeDiv').show();
+                } else if(commandType == '9'){//紧急故障
+                    $('#emergeDiv').show();
+                }else {
+                    $('#ticketDiv').hide();
+                    $('#operateCarton').show();
+                    $('#qrCodeDiv').hide();
+                    $('#completeDiv').hide();
+                    $('#emergeDiv').hide();
+                }
+
+                if(commandType == '9'){
+                    $('#advice').trigger('pause');
+                    $('#operateCarton').trigger('pause');
+                }
+            };
+
+            //关闭事件
+            socket.onclose = function () {
+                console.log("websocket已关闭");
+            };
+            //发生了错误事件
+            socket.onerror = function () {
+                console.log("websocket发生了错误");
+            }
+        }
+
+        function sendMessage() {
+            if (typeof (WebSocket) == "undefined") {
+                console.log("您的浏览器不支持WebSocket");
+                return;
+            }
+            socket.send('{"toUserId":"' + $("#toUserId").val() + '","contentText":"' + $("#contentText").val() + '"}');
+        }
+
+        openSocket();
+
+    });
+</script>
